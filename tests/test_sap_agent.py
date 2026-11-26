@@ -158,3 +158,10 @@ async def test_agent_card_is_public_and_declares_basic_auth():
         card = (await http.get("/.well-known/agent-card.json")).json()
     scheme = card["securitySchemes"]["basicAuth"]
     assert scheme["httpAuthSecurityScheme"]["scheme"] == "Basic"
+
+
+async def test_no_credentials_means_open_endpoint_and_no_security_in_card(http):
+    card = (await http.get("/.well-known/agent-card.json")).json()
+    assert "securitySchemes" not in card
+    task = (await http.post("/", json=v03("PO 450001"))).json()["result"]
+    assert task["status"]["state"] == "completed"

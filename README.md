@@ -30,10 +30,9 @@ venv\Scripts\python -m pytest
 - PO data comes from SAP S/4HANA (`SAP_MODE=odata`, OData service
   `API_PURCHASEORDER_PROCESS_SRV`) or from `data/sap_purchase_orders.json`
   (`SAP_MODE=json`). See `po_agents/common/repository.py`.
-- The A2A endpoint requires **HTTP Basic auth** (`SAP_AGENT_USERNAME` /
-  `SAP_AGENT_PASSWORD` in `.env`); the agent card stays public. Basic auth sends
-  the password with every request, so only expose the agent over HTTPS, and
-  consider IAS/JWT for production. Tasks are held in memory.
+- The A2A endpoint has **no authentication** by default: anyone with the URL can
+  read PO data. Set `SAP_AGENT_USERNAME` and `SAP_AGENT_PASSWORD` to require HTTP
+  Basic auth (the agent card stays public). Tasks are held in memory.
 - The files in `joule/` follow SAP's CodeJam and have not been linted, compiled or
   deployed.
 

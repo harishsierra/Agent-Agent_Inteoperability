@@ -5,25 +5,30 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
-    "type": "basic",
-    "basic": [
-      { "key": "username", "value": "{{username}}", "type": "string" },
-      { "key": "password", "value": "{{password}}", "type": "string" }
-    ]
+    "type": "noauth"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://127.0.0.1:9001" },
-    { "key": "username", "value": "Admin" },
-    { "key": "password", "value": "Admin@123" },
-    { "key": "poNumber", "value": "4500000001" },
-    { "key": "taskId", "value": "" },
-    { "key": "contextId", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "https://agent-interoperability.cfapps.us10-001.hana.ondemand.com"
+    },
+    {
+      "key": "poNumber",
+      "value": "4500000001"
+    },
+    {
+      "key": "taskId",
+      "value": ""
+    },
+    {
+      "key": "contextId",
+      "value": ""
+    }
   ],
   "item": [
     {
-      "name": "1. Agent card (public)",
+      "name": "1. Agent card",
       "request": {
-        "auth": { "type": "noauth" },
         "method": "GET",
         "url": "{{baseUrl}}/.well-known/agent-card.json"
       }
@@ -45,7 +50,12 @@
       ],
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "url": "{{baseUrl}}/",
         "body": {
           "mode": "raw",
@@ -57,7 +67,12 @@
       "name": "3. Unknown PO",
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "url": "{{baseUrl}}/",
         "body": {
           "mode": "raw",
@@ -83,7 +98,12 @@
       ],
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "url": "{{baseUrl}}/",
         "body": {
           "mode": "raw",
@@ -95,31 +115,17 @@
       "name": "4b. Answer with PO (same task)",
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "url": "{{baseUrl}}/",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"2\",\n  \"method\": \"message/send\",\n  \"params\": {\n    \"message\": {\n      \"kind\": \"message\",\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"user\",\n      \"taskId\": \"{{taskId}}\",\n      \"contextId\": \"{{contextId}}\",\n      \"parts\": [\n        { \"kind\": \"text\", \"text\": \"{{poNumber}}\" }\n      ]\n    }\n  }\n}"
         }
-      }
-    },
-    {
-      "name": "5. No login (expect 401)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": ["pm.test('rejected', () => pm.response.to.have.status(401));"]
-          }
-        }
-      ],
-      "request": {
-        "auth": { "type": "noauth" },
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{baseUrl}}/",
-        "body": { "mode": "raw", "raw": "{}" }
       }
     }
   ]

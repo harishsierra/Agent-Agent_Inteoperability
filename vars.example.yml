@@ -4,10 +4,6 @@ app_name: agent-interoperability
 # CF domain of subaccount region us10 (cf domains lists yours)
 cf_domain: cfapps.us10-001.hana.ondemand.com
 
-# Login callers (AWS / Copilot) must send to the A2A endpoint
-agent_username: Admin
-agent_password: Admin@123
-
 # Existing service instances in the space
 connectivity_service: btp-connectivity
 # Destination service instance (its name is "connectivity"; type destination)

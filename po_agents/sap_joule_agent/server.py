@@ -28,8 +28,22 @@ from po_agents.sap_joule_agent.executor import SapAgentExecutor
 from po_agents.sap_joule_agent.graph import build_sap_graph
 
 
-def build_agent_card(url: str) -> AgentCard:
+def build_agent_card(url: str, basic_auth: bool = False) -> AgentCard:
+    security = {}
+    if basic_auth:
+        # Tells clients to send HTTP Basic credentials on A2A calls.
+        security = {
+            "security_schemes": {
+                "basicAuth": SecurityScheme(
+                    http_auth_security_scheme=HTTPAuthSecurityScheme(scheme="Basic")
+                )
+            },
+            "security_requirements": [
+                SecurityRequirement(schemes={"basicAuth": StringList()})
+            ],
+        }
     return AgentCard(
+        **security,
         name="SAP Purchase Order Agent",
         description="Retrieves purchase order details from SAP.",
         version="1.0.0",
@@ -39,13 +53,6 @@ def build_agent_card(url: str) -> AgentCard:
             AgentInterface(url=url, protocol_binding="JSONRPC", protocol_version="0.3"),
         ],
         capabilities=AgentCapabilities(streaming=False, push_notifications=False),
-        # Tells clients to send HTTP Basic credentials on A2A calls.
-        security_schemes={
-            "basicAuth": SecurityScheme(
-                http_auth_security_scheme=HTTPAuthSecurityScheme(scheme="Basic")
-            )
-        },
-        security_requirements=[SecurityRequirement(schemes={"basicAuth": StringList()})],
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain", "application/json"],
         skills=[
@@ -99,8 +106,8 @@ def build_app(
     url: str,
     credentials: tuple[str, str] | None = None,
 ) -> Starlette:
-    """credentials=(username, password) turns on HTTP Basic auth."""
-    card = build_agent_card(url)
+    """credentials=(username, password) turns on HTTP Basic auth; None leaves it open."""
+    card = build_agent_card(url, basic_auth=bool(credentials))
     handler = DefaultRequestHandler(
         agent_executor=SapAgentExecutor(build_sap_graph(extract_po)),
         task_store=InMemoryTaskStore(),
@@ -131,9 +138,9 @@ def main() -> None:
     url = os.environ.get("SAP_AGENT_URL", f"http://{host}:{port}")
     username = os.environ.get("SAP_AGENT_USERNAME")
     password = os.environ.get("SAP_AGENT_PASSWORD")
-    if not username or not password:
-        raise SystemExit("Set SAP_AGENT_USERNAME and SAP_AGENT_PASSWORD in .env")
-    app = build_app(build_extractor(), url, credentials=(username, password))
+    # Both set: HTTP Basic auth on the A2A endpoint. Neither set: no authentication.
+    credentials = (username, password) if username and password else None
+    app = build_app(build_extractor(), url, credentials=credentials)
     uvicorn.run(app, host=host, port=port)
 
 

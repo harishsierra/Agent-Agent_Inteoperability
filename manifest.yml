@@ -21,8 +21,6 @@ applications:
     env:
       SAP_AGENT_HOST: 0.0.0.0
       SAP_AGENT_URL: https://((app_name)).((cf_domain))
-      SAP_AGENT_USERNAME: ((agent_username))
-      SAP_AGENT_PASSWORD: ((agent_password))
 
       SAP_MODE: odata
       # BTP destination for S/4HANA; the SAP login comes from it, not from here.
