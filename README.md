@@ -27,8 +27,9 @@ venv\Scripts\python -m pytest
   code-based agent. SAP's pages (October 2026) confirm SAP-delivered and Joule
   Studio agents, and say communication with self-hosted agents through Agent
   Gateway is not yet supported.
-- PO data is `data/sap_purchase_orders.json`. Connect SAP in
-  `po_agents/common/repository.py`.
+- PO data comes from SAP S/4HANA (`SAP_MODE=odata`, OData service
+  `API_PURCHASEORDER_PROCESS_SRV`) or from `data/sap_purchase_orders.json`
+  (`SAP_MODE=json`). See `po_agents/common/repository.py`.
 - The A2A endpoint requires **HTTP Basic auth** (`SAP_AGENT_USERNAME` /
   `SAP_AGENT_PASSWORD` in `.env`); the agent card stays public. Basic auth sends
   the password with every request, so only expose the agent over HTTPS, and

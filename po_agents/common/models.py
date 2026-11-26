@@ -8,7 +8,8 @@ class PurchaseOrder(BaseModel):
     po_number: str
     supplier: str
     expected_delivery_date: date
-    ordered_quantity: int = Field(ge=0)
+    # SAP quantities are decimals; whole numbers stay int.
+    ordered_quantity: int | float = Field(ge=0)
     unit: str
 
 

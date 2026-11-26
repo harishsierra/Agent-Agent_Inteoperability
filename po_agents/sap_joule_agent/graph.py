@@ -19,7 +19,7 @@ def build_sap_graph(extract_po: PoExtractor):
         return {"po_number": await extract_po(state["request"])}
 
     async def lookup(state: SapState) -> SapState:
-        return {"purchase_order": get_purchase_order(state["po_number"])}
+        return {"purchase_order": await get_purchase_order(state["po_number"])}
 
     def after_understand(state: SapState) -> str:
         return "lookup" if state["po_number"] else END

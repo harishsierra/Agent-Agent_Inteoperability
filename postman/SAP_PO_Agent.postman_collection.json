@@ -1,0 +1,126 @@
+{
+  "info": {
+    "name": "SAP PO Agent (A2A)",
+    "description": "Tests the SAP Purchase Order A2A agent against real SAP data. Start the server first: venv\\Scripts\\python -m po_agents.sap_joule_agent.server",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "{{username}}", "type": "string" },
+      { "key": "password", "value": "{{password}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:9001" },
+    { "key": "username", "value": "Admin" },
+    { "key": "password", "value": "Admin@123" },
+    { "key": "poNumber", "value": "4500000001" },
+    { "key": "taskId", "value": "" },
+    { "key": "contextId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Agent card (public)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "url": "{{baseUrl}}/.well-known/agent-card.json"
+      }
+    },
+    {
+      "name": "2. Get purchase order from SAP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const r = pm.response.json().result;",
+              "pm.test('task completed', () => pm.expect(r.status.state).to.eql('completed'));",
+              "console.log(r.status.message.parts[0].text);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"message/send\",\n  \"params\": {\n    \"message\": {\n      \"kind\": \"message\",\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"user\",\n      \"parts\": [\n        { \"kind\": \"text\", \"text\": \"Get the details of purchase order {{poNumber}}\" }\n      ]\n    }\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Unknown PO",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"message/send\",\n  \"params\": {\n    \"message\": {\n      \"kind\": \"message\",\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"user\",\n      \"parts\": [\n        { \"kind\": \"text\", \"text\": \"PO 4599999999\" }\n      ]\n    }\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "4a. Ask without PO (input-required)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const r = pm.response.json().result;",
+              "pm.test('agent asks for the PO', () => pm.expect(r.status.state).to.eql('input-required'));",
+              "pm.collectionVariables.set('taskId', r.id);",
+              "pm.collectionVariables.set('contextId', r.contextId);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"message/send\",\n  \"params\": {\n    \"message\": {\n      \"kind\": \"message\",\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"user\",\n      \"parts\": [\n        { \"kind\": \"text\", \"text\": \"hello\" }\n      ]\n    }\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "4b. Answer with PO (same task)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"2\",\n  \"method\": \"message/send\",\n  \"params\": {\n    \"message\": {\n      \"kind\": \"message\",\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"user\",\n      \"taskId\": \"{{taskId}}\",\n      \"contextId\": \"{{contextId}}\",\n      \"parts\": [\n        { \"kind\": \"text\", \"text\": \"{{poNumber}}\" }\n      ]\n    }\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "5. No login (expect 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('rejected', () => pm.response.to.have.status(401));"]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/",
+        "body": { "mode": "raw", "raw": "{}" }
+      }
+    }
+  ]
+}
