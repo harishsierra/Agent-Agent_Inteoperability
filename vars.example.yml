@@ -1,0 +1,28 @@
+# Copy to vars.yml (git-ignored) and fill in. Used by: cf push --vars-file vars.yml
+
+app_name: agent-interoperability
+# CF domain of subaccount region us10 (cf domains lists yours)
+cf_domain: cfapps.us10-001.hana.ondemand.com
+
+# Login callers (AWS / Copilot) must send to the A2A endpoint
+agent_username: Admin
+agent_password: Admin@123
+
+# Existing service instances in the space
+connectivity_service: btp-connectivity
+# Destination service instance (its name is "connectivity"; type destination)
+destination_service: connectivity
+
+# BTP destination (subaccount > Connectivity > Destinations) pointing at S/4HANA:
+# Type HTTP, ProxyType OnPremise, Authentication BasicAuthentication,
+# URL http://<cloud-connector-virtual-host>:<port>, property sap-client=100
+sap_destination: S4
+
+# offline = regex finds the PO number; aicore = LLM through SAP AI Core
+llm_mode: offline
+aicore_client_id: ""
+aicore_client_secret: ""
+aicore_auth_url: ""
+aicore_base_url: ""
+aicore_resource_group: default
+aicore_model: ""

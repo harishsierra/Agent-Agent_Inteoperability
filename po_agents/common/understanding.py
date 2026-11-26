@@ -12,6 +12,9 @@ from pydantic import BaseModel, Field
 
 PoExtractor = Callable[[str], Awaitable[str | None]]
 
+# SAP AI Core deployment IDs: "d" followed by 15 hex characters.
+DEPLOYMENT_ID = re.compile(r"^d[0-9a-f]{15}$")
+
 SYSTEM_PROMPT = (
     "Extract the purchase order number from the user's message. Copy its digits "
     "exactly. If there is no purchase order number, or more than one, return null. "
@@ -66,6 +69,11 @@ def build_extractor() -> PoExtractor:
     from gen_ai_hub.proxy.core.proxy_clients import get_proxy_client
     from gen_ai_hub.proxy.langchain.openai import ChatOpenAI
 
-    return llm_extractor(
-        ChatOpenAI(proxy_model_name=model, proxy_client=get_proxy_client("gen-ai-hub"))
-    )
+    client = get_proxy_client("gen-ai-hub")
+    # Accept a deployment ID (e.g. dadede28a723f679) or a model name (e.g. gpt-4.1).
+    # An ID picks one exact deployment when a model is deployed more than once.
+    if DEPLOYMENT_ID.match(model):
+        llm = ChatOpenAI(deployment_id=model, proxy_client=client)
+    else:
+        llm = ChatOpenAI(proxy_model_name=model, proxy_client=client)
+    return llm_extractor(llm)

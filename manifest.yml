@@ -1,0 +1,37 @@
+---
+# Deploy: cf push --vars-file vars.yml
+applications:
+  - name: ((app_name))
+    memory: 1G
+    disk_quota: 2G
+    instances: 1
+    buildpacks:
+      - python_buildpack
+    command: python -m po_agents.sap_joule_agent.server
+    routes:
+      - route: ((app_name)).((cf_domain))
+    # The A2A endpoint needs a login; the agent card is public, so check that.
+    health-check-type: http
+    health-check-http-endpoint: /.well-known/agent-card.json
+    services:
+      # Routes SAP calls through the Cloud Connector to the on-premise S/4HANA.
+      - ((connectivity_service))
+      # Holds the S/4HANA destination (URL, user, password, sap-client, location ID).
+      - ((destination_service))
+    env:
+      SAP_AGENT_HOST: 0.0.0.0
+      SAP_AGENT_URL: https://((app_name)).((cf_domain))
+      SAP_AGENT_USERNAME: ((agent_username))
+      SAP_AGENT_PASSWORD: ((agent_password))
+
+      SAP_MODE: odata
+      # BTP destination for S/4HANA; the SAP login comes from it, not from here.
+      SAP_DESTINATION: ((sap_destination))
+
+      LLM_MODE: ((llm_mode))
+      AICORE_CLIENT_ID: ((aicore_client_id))
+      AICORE_CLIENT_SECRET: ((aicore_client_secret))
+      AICORE_AUTH_URL: ((aicore_auth_url))
+      AICORE_BASE_URL: ((aicore_base_url))
+      AICORE_RESOURCE_GROUP: ((aicore_resource_group))
+      AICORE_MODEL: ((aicore_model))

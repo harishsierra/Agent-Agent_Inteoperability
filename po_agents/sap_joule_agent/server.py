@@ -126,7 +126,8 @@ def build_app(
 def main() -> None:
     load_dotenv()
     host = os.environ.get("SAP_AGENT_HOST", "127.0.0.1")
-    port = int(os.environ.get("SAP_AGENT_PORT", "9001"))
+    # Cloud Foundry assigns the port in PORT.
+    port = int(os.environ.get("PORT") or os.environ.get("SAP_AGENT_PORT", "9001"))
     url = os.environ.get("SAP_AGENT_URL", f"http://{host}:{port}")
     username = os.environ.get("SAP_AGENT_USERNAME")
     password = os.environ.get("SAP_AGENT_PASSWORD")
