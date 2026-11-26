@@ -1,0 +1,12 @@
+# Each call starts a new A2A task: one question, one answer.
+action_groups:
+  - actions:
+      - type: agent-request
+        system_alias: PO_AGENT
+        agent_type: remote
+        result_variable: "result"
+      - type: message
+        message:
+          type: text
+          markdown: true
+          content: "<? result.body.status.message.parts[0].text ?>"

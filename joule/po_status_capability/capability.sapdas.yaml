@@ -1,0 +1,13 @@
+schema_version: 3.28.0 # minimum version that supports agent-request
+
+metadata:
+  namespace: joule.ext # required for custom capabilities
+  name: po_status_capability
+  version: 1.0.0
+  display_name: Purchase_Order_Agent
+  description: Retrieves purchase order details from SAP through the purchase order agent.
+
+system_aliases:
+  PO_AGENT:
+    # BTP destination pointing at the deployed agent.
+    destination: PO_AGENT_A2A

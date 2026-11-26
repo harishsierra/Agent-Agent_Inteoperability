@@ -1,0 +1,5 @@
+schema_version: 1.4.0
+name: po_status_assistant
+capabilities:
+  - type: local
+    folder: ./po_status_capability

@@ -1,0 +1,9 @@
+{
+  "450001": {
+    "po_number": "450001",
+    "supplier": "SUP001",
+    "expected_delivery_date": "2026-11-28",
+    "ordered_quantity": 1000,
+    "unit": "units"
+  }
+}
