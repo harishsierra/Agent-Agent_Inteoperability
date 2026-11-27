@@ -6,11 +6,13 @@ Copilot agent --A2A--> SAP Agent Gateway -> Joule capability --A2A 0.3--> this a
 ```
 
 This repository holds only the SAP side. The Copilot agent owns logistics data
-and the delay comparison; this agent returns PO, supplier, quantity and expected
-delivery date.
+and the delay comparison; this agent answers questions about a PO (supplier,
+quantity, delivery date and status, release status, value, items, terms, ...)
+and returns only the fields that were asked for (`po_agents/common/fields.py`).
 
-The LLM (through SAP AI Core) only identifies the PO number, and the number is
-rejected unless it appears in the user's text. All facts come from PO data.
+The LLM (through SAP AI Core) only identifies the PO number and picks the
+requested fields from a fixed list. The number is rejected unless it appears in
+the user's text. All facts come from SAP; the LLM never writes them.
 
 ## Run
 

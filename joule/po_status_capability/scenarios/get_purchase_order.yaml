@@ -1,9 +1,12 @@
 description: >-
-  This skill retrieves purchase order (PO) details from SAP: supplier, ordered
-  quantity and expected or requested delivery date. Use it whenever the user or
-  another agent asks about a purchase order by number, for example "Get the
-  details of purchase order 450001" or "What is the expected delivery date of
-  PO 450001?".
+  This skill answers any question about a purchase order (PO) in SAP, given its
+  PO number: supplier, ordered quantity, expected delivery date, delivery and
+  invoice status, release status, net value and price, line items and materials,
+  order date, payment terms, Incoterms, plant, delivery address, company code,
+  purchasing organization, creator and document type. It returns only what was
+  asked. Use it whenever the user or another agent asks about a purchase order
+  by number, for example "What is the quantity of PO 4500000001?", "When will
+  purchase order 4500000001 be delivered?" or "Get the details of PO 4500000001".
 target:
   name: call_agent
   type: function

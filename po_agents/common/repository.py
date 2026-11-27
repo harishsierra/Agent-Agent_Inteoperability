@@ -10,7 +10,7 @@ from pathlib import Path
 
 import httpx
 
-from po_agents.common.models import PurchaseOrder
+from po_agents.common.models import PurchaseOrder, PurchaseOrderItem
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -89,42 +89,86 @@ async def _from_odata(po_number: str) -> PurchaseOrder | None:
     return parse_odata_purchase_order(response.json()["d"])
 
 
-def parse_odata_purchase_order(header: dict) -> PurchaseOrder | None:
+def parse_odata_purchase_order(header: dict) -> PurchaseOrder:
     """Maps an A_PurchaseOrder entity (with items and schedule lines) to PurchaseOrder.
 
-    A PO can have several items. Quantities are added up when every item uses the
-    same unit (otherwise the first item is used), and the latest schedule-line date
-    is taken as the expected delivery date.
+    Deleted items ("L") and blocked items ("S") are left out.
     """
     items = [
-        item
+        _parse_item(item)
         for item in header.get("to_PurchaseOrderItem", {}).get("results", [])
-        # "L" marks a deleted item, "S" a blocked one.
         if not item.get("PurchasingDocumentDeletionCode")
     ]
-    if not items:
-        return None
-
-    units = {item["PurchaseOrderQuantityUnit"] for item in items}
-    counted = items if len(units) == 1 else items[:1]
-    quantity = sum(Decimal(item["OrderQuantity"]) for item in counted)
-
-    dates = [
-        _odata_date(line["ScheduleLineDeliveryDate"])
-        for item in counted
-        for line in item.get("to_ScheduleLine", {}).get("results", [])
-        if line.get("ScheduleLineDeliveryDate")
-    ]
-    if not dates:
-        return None
-
     return PurchaseOrder(
         po_number=header["PurchaseOrder"],
         supplier=header["Supplier"],
-        ordered_quantity=int(quantity) if quantity == quantity.to_integral() else float(quantity),
-        unit=counted[0]["PurchaseOrderQuantityUnit"],
-        expected_delivery_date=max(dates),
+        supplier_name=_text(header.get("AddressName")),
+        supplier_city=_text(header.get("AddressCityName")),
+        supplier_country=_text(header.get("AddressCountry")),
+        order_date=_odata_date_or_none(header.get("PurchaseOrderDate")),
+        created_by=_text(header.get("CreatedByUser")),
+        company_code=_text(header.get("CompanyCode")),
+        purchasing_organization=_text(header.get("PurchasingOrganization")),
+        purchasing_group=_text(header.get("PurchasingGroup")),
+        po_type=_text(header.get("PurchaseOrderType")),
+        processing_status=_text(header.get("PurchasingProcessingStatus")),
+        currency=_text(header.get("DocumentCurrency")),
+        payment_terms=_text(header.get("PaymentTerms")),
+        cash_discount_days=int(header["CashDiscount1Days"]) if _number(header.get("CashDiscount1Days")) else None,
+        cash_discount_percent=_number(header.get("CashDiscount1Percent")),
+        incoterms=_text(header.get("IncotermsClassification")),
+        incoterms_location=_text(header.get("IncotermsLocation1")),
+        items=items,
     )
+
+
+def _parse_item(item: dict) -> PurchaseOrderItem:
+    lines = item.get("to_ScheduleLine", {}).get("results", [])
+    street = " ".join(
+        p for p in (_text(item.get("DeliveryAddressHouseNumber")), _text(item.get("DeliveryAddressStreetName"))) if p
+    )
+    city = " ".join(
+        p for p in (_text(item.get("DeliveryAddressPostalCode")), _text(item.get("DeliveryAddressCityName"))) if p
+    )
+    address = ", ".join(
+        p for p in (
+            _text(item.get("DeliveryAddressName")), street, city,
+            _text(item.get("DeliveryAddressRegion")), _text(item.get("DeliveryAddressCountry")),
+        ) if p
+    )
+    return PurchaseOrderItem(
+        item=item["PurchaseOrderItem"],
+        material=_text(item.get("Material")),
+        description=_text(item.get("PurchaseOrderItemText")),
+        quantity=Decimal(item["OrderQuantity"]),
+        unit=item["PurchaseOrderQuantityUnit"],
+        net_price=_number(item.get("NetPriceAmount")),
+        price_quantity=_number(item.get("NetPriceQuantity")) or Decimal(1),
+        currency=_text(item.get("DocumentCurrency")),
+        plant=_text(item.get("Plant")),
+        storage_location=_text(item.get("StorageLocation")),
+        delivery_dates=sorted(
+            {_odata_date(l["ScheduleLineDeliveryDate"]) for l in lines if l.get("ScheduleLineDeliveryDate")}
+        ),
+        completely_delivered=bool(item.get("IsCompletelyDelivered")),
+        finally_invoiced=bool(item.get("IsFinallyInvoiced")),
+        delivery_address=address or None,
+    )
+
+
+def _text(value) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _number(value) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    number = Decimal(str(value))
+    return number if number else None
+
+
+def _odata_date_or_none(value) -> date | None:
+    return _odata_date(value) if value else None
 
 
 def _odata_date(value: str) -> date:

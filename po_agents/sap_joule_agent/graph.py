@@ -11,12 +11,15 @@ from po_agents.common.understanding import PoExtractor
 class SapState(TypedDict, total=False):
     request: str
     po_number: str | None
+    # Fields the user asked about; empty means a general question (summary).
+    fields: list[str]
     purchase_order: PurchaseOrder | None
 
 
 def build_sap_graph(extract_po: PoExtractor):
     async def understand(state: SapState) -> SapState:
-        return {"po_number": await extract_po(state["request"])}
+        query = await extract_po(state["request"])
+        return {"po_number": query.po_number, "fields": query.fields}
 
     async def lookup(state: SapState) -> SapState:
         return {"purchase_order": await get_purchase_order(state["po_number"])}

@@ -6,17 +6,9 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 
-from po_agents.common.models import PurchaseOrder, format_date
+from po_agents.common.fields import FIELDS, SUMMARY, answer
 
 logger = logging.getLogger(__name__)
-
-
-def describe(po: PurchaseOrder) -> str:
-    return (
-        f"PO {po.po_number}: supplier {po.supplier}, "
-        f"{po.ordered_quantity:,} {po.unit}, "
-        f"expected delivery {format_date(po.expected_delivery_date)}."
-    )
 
 
 class SapAgentExecutor(AgentExecutor):
@@ -50,20 +42,27 @@ class SapAgentExecutor(AgentExecutor):
             return
 
         po = state["purchase_order"]
+        if po is None:
+            text, data = f"PO {po_number} was not found in SAP.", None
+            fields = state.get("fields") or []
+        else:
+            fields = [f for f in state.get("fields") or [] if f in FIELDS] or SUMMARY
+            text, data = answer(po, fields)
         await updater.add_artifact(
             [
                 new_data_part(
                     {
                         "po_number": po_number,
-                        "purchase_order": po.model_dump(mode="json") if po else None,
+                        "found": po is not None,
+                        "requested_fields": fields,
+                        # Only the fields the user asked about.
+                        "data": data,
                     }
                 )
             ],
             name="purchase_order",
         )
-        await updater.complete(
-            say(describe(po) if po else f"PO {po_number} was not found in SAP.")
-        )
+        await updater.complete(say(text))
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await TaskUpdater(event_queue, context.task_id, context.context_id).cancel()

@@ -2,8 +2,49 @@
   "450001": {
     "po_number": "450001",
     "supplier": "SUP001",
-    "expected_delivery_date": "2026-11-28",
-    "ordered_quantity": 1000,
-    "unit": "units"
+    "supplier_name": "Demo Supplier Inc.",
+    "supplier_city": "Chicago",
+    "supplier_country": "US",
+    "order_date": "2026-11-02",
+    "created_by": "BUYER01",
+    "company_code": "1710",
+    "purchasing_organization": "1710",
+    "purchasing_group": "002",
+    "po_type": "NB",
+    "processing_status": "05",
+    "currency": "USD",
+    "payment_terms": "0002",
+    "cash_discount_days": 14,
+    "cash_discount_percent": "2",
+    "items": [
+      {
+        "item": "10",
+        "material": "MZ-RM-R300-01",
+        "description": "BKR-300 Frame",
+        "quantity": "600",
+        "unit": "units",
+        "net_price": "12.50",
+        "currency": "USD",
+        "plant": "1710",
+        "storage_location": "171C",
+        "delivery_dates": ["2026-11-25"],
+        "completely_delivered": true,
+        "delivery_address": "Plant 1710, 3475 Deer Creek, 94304 Palo Alto, CA, US"
+      },
+      {
+        "item": "20",
+        "material": "MZ-RM-R300-02",
+        "description": "BKR-300 Wheel",
+        "quantity": "400",
+        "unit": "units",
+        "net_price": "8.00",
+        "currency": "USD",
+        "plant": "1710",
+        "storage_location": "171C",
+        "delivery_dates": ["2026-11-28"],
+        "completely_delivered": false,
+        "delivery_address": "Plant 1710, 3475 Deer Creek, 94304 Palo Alto, CA, US"
+      }
+    ]
   }
 }

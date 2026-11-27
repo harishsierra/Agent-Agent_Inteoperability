@@ -1,5 +1,6 @@
 """SAP OData connector, tested against a mocked S/4HANA response."""
 from datetime import date
+from decimal import Decimal
 
 import httpx
 import pytest
@@ -12,9 +13,12 @@ def odata_po(items):
                   "to_PurchaseOrderItem": {"results": items}}}
 
 
-def item(qty, unit, *dates, deleted=""):
+def item(qty, unit, *dates, deleted="", no="10", price="10.00", delivered=False):
     lines = [{"ScheduleLineDeliveryDate": d} for d in dates]
-    return {"OrderQuantity": qty, "PurchaseOrderQuantityUnit": unit,
+    return {"PurchaseOrderItem": no, "PurchaseOrderItemText": f"Item {no}",
+            "Material": f"MAT-{no}", "NetPriceAmount": price, "NetPriceQuantity": "1",
+            "IsCompletelyDelivered": delivered,
+            "OrderQuantity": qty, "PurchaseOrderQuantityUnit": unit,
             "PurchasingDocumentDeletionCode": deleted,
             "to_ScheduleLine": {"results": lines}}
 
@@ -45,11 +49,9 @@ def sap(monkeypatch):
 async def test_reads_po_from_sap(sap):
     sap["response"] = httpx.Response(200, json=odata_po([item("1000.000", "PC", NOV28)]))
     po = await repository.get_purchase_order("4500000001")
-    assert po.model_dump() == {
-        "po_number": "4500000001", "supplier": "17300001",
-        "ordered_quantity": 1000, "unit": "PC",
-        "expected_delivery_date": date(2026, 11, 28),
-    }
+    assert (po.po_number, po.supplier) == ("4500000001", "17300001")
+    assert po.quantity_by_unit == {"PC": 1000}
+    assert po.expected_delivery_date == date(2026, 11, 28)
     [request] = sap["requests"]
     assert request.url.path.endswith("/A_PurchaseOrder('4500000001')")
     assert request.url.params["sap-client"] == "100"
@@ -72,22 +74,30 @@ async def test_sap_error_is_raised(sap):
         await repository.get_purchase_order("4500000001")
 
 
-def test_multi_item_sums_quantity_and_takes_latest_date():
-    po = repository.parse_odata_purchase_order(odata_po([
-        item("600", "PC", NOV28),
-        item("400.5", "PC", DEC05),
-        item("999", "PC", DEC05, deleted="L"),
-    ])["d"])
-    assert po.ordered_quantity == 1000.5
+def test_parses_header_items_and_skips_deleted():
+    payload = odata_po([
+        item("600", "PC", NOV28, no="10", price="2.00", delivered=True),
+        item("400.5", "PC", DEC05, no="20", price="1.00"),
+        item("999", "PC", DEC05, no="30", deleted="L"),
+    ])["d"]
+    payload.update({"PurchasingProcessingStatus": "05", "DocumentCurrency": "USD",
+                    "PaymentTerms": "0002", "CashDiscount1Days": "14",
+                    "CashDiscount1Percent": "2.000", "AddressName": "Acme",
+                    "PurchaseOrderDate": NOV28})
+    po = repository.parse_odata_purchase_order(payload)
+    assert [i.item for i in po.items] == ["10", "20"]
+    assert po.quantity_by_unit == {"PC": Decimal("1000.5")}
     assert po.expected_delivery_date == date(2026, 12, 5)
+    assert po.net_value == Decimal("1600.5")
+    assert (po.status_text, po.currency, po.cash_discount_days) == ("Released", "USD", 14)
+    assert po.order_date == date(2026, 11, 28)
 
 
-def test_mixed_units_use_first_item():
+def test_mixed_units_are_totalled_separately():
     po = repository.parse_odata_purchase_order(odata_po([
-        item("10", "KG", NOV28), item("5", "PC", DEC05),
+        item("10", "KG", NOV28, no="10"), item("5", "PC", DEC05, no="20"),
     ])["d"])
-    assert (po.ordered_quantity, po.unit) == (10, "KG")
-    assert po.expected_delivery_date == date(2026, 11, 28)
+    assert po.quantity_by_unit == {"KG": 10, "PC": 5}
 
 
 async def test_no_connectivity_binding_means_direct_call(monkeypatch):
@@ -161,7 +171,7 @@ async def test_po_lookup_through_destination(btp, monkeypatch):
     monkeypatch.setattr(repository, "_connectivity_proxy", fake_proxy)
     po = await repository.get_purchase_order("4500000001")
     assert proxied_for == ["LOC1"]  # OnPremise destination goes via Cloud Connector
-    assert (po.ordered_quantity, po.unit) == (490, "PC")
+    assert po.quantity_by_unit == {"PC": 490}
     sap_call = btp["requests"][-1]
     assert sap_call.url.host == "s4h-virtual"
     assert sap_call.url.params["sap-client"] == "100"

@@ -59,9 +59,17 @@ def build_agent_card(url: str, basic_auth: bool = False) -> AgentCard:
             AgentSkill(
                 id="get_purchase_order",
                 name="Get purchase order",
-                description="Returns supplier, quantity and expected delivery date.",
+                description=(
+                    "Answers questions about a purchase order: supplier, quantity, delivery "
+                    "date and status, release status, value, items, terms and more. "
+                    "Returns only the requested fields."
+                ),
                 tags=["sap", "purchase-order"],
-                examples=["Get the details of purchase order 450001"],
+                examples=[
+                    "Get the details of purchase order 4500000001",
+                    "What is the quantity of PO 4500000001?",
+                    "When will PO 4500000001 be delivered?",
+                ],
             )
         ],
     )

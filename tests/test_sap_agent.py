@@ -34,16 +34,13 @@ async def test_v1_client_gets_structured_data(http):
     [response] = [r async for r in client.send_message(request)]
     assert response.task.status.state == TaskState.TASK_STATE_COMPLETED
     [data] = get_data_parts(response.task.artifacts[0].parts)
-    assert data == {
-        "po_number": "450001",
-        "purchase_order": {
-            "po_number": "450001",
-            "supplier": "SUP001",
-            "expected_delivery_date": "2026-11-28",
-            "ordered_quantity": 1000,
-            "unit": "units",
-        },
-    }
+    assert data["po_number"] == "450001" and data["found"] is True
+    # A general question gets the summary fields.
+    assert data["requested_fields"] == [
+        "supplier", "status", "quantity", "delivery_date", "delivery_status", "value"
+    ]
+    assert data["data"]["delivery_date"]["expected_delivery_date"] == "2026-11-28"
+    assert data["data"]["quantity"]["total"] == {"units": 1000}
 
 
 def v03(text, **ids):
@@ -68,8 +65,31 @@ async def test_v03_wire_format(http):
     assert task["kind"] == "task" and task["id"] and task["contextId"]
     assert task["status"]["state"] == "completed"
     assert task["status"]["message"]["parts"][0]["text"] == (
-        "PO 450001: supplier SUP001, 1,000 units, expected delivery 28 Nov 2026."
+        "PO 450001: supplier SUP001 (Demo Supplier Inc., Chicago, US); status Released; "
+        "ordered quantity 1,000 units across 2 items; expected delivery between "
+        "25 Nov 2026 and 28 Nov 2026 (complete by 28 Nov 2026); 1 of 2 items delivered; "
+        "net value 10,700 USD."
     )
+
+
+def text_of(task):
+    return task["status"]["message"]["parts"][0]["text"]
+
+
+@pytest.mark.parametrize("question,expected,fields", [
+    ("What is the quantity of PO 450001?",
+     "PO 450001: ordered quantity 1,000 units across 2 items.", ["quantity"]),
+    ("Who is the supplier of PO 450001?",
+     "PO 450001: supplier SUP001 (Demo Supplier Inc., Chicago, US).", ["supplier"]),
+    ("When was PO 450001 ordered?", "PO 450001: ordered on 2 Nov 2026.", ["order_date"]),
+    ("What is the price of PO 450001?", "PO 450001: net value 10,700 USD.", ["value"]),
+])
+async def test_only_the_requested_field_is_returned(http, question, expected, fields):
+    task = (await http.post("/", json=v03(question))).json()["result"]
+    assert text_of(task) == expected
+    data = task["artifacts"][0]["parts"][0]["data"]
+    assert data["requested_fields"] == fields
+    assert list(data["data"]) == fields
 
 
 async def test_unknown_po(http):
@@ -115,9 +135,18 @@ class ToolModel(GenericFakeChatModel):
     [("450001", "450001"), ("450002", None), ("45000", None), (None, None)],
 )
 async def test_llm_po_must_be_in_user_text(model_says, expected):
-    call = {"name": "PoRequest", "args": {"po_number": model_says}, "id": "1"}
+    call = {"name": "PoRequest", "args": {"po_number": model_says, "fields": ["delivery_date"]}, "id": "1"}
     model = ToolModel(messages=iter([AIMessage("", tool_calls=[call])]))
-    assert await llm_extractor(model)("Will PO 450001 arrive?") == expected
+    query = await llm_extractor(model)("Will PO 450001 arrive?")
+    assert query.po_number == expected
+    assert query.fields == ["delivery_date"]
+
+
+async def test_llm_all_expands_to_every_field():
+    call = {"name": "PoRequest", "args": {"po_number": "450001", "fields": ["all"]}, "id": "1"}
+    model = ToolModel(messages=iter([AIMessage("", tool_calls=[call])]))
+    query = await llm_extractor(model)("Everything about PO 450001")
+    assert "all" not in query.fields and len(query.fields) > 10
 
 
 def test_missing_model_config(monkeypatch):
